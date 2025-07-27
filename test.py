@@ -9,10 +9,10 @@ mp_drawing = mp.solutions.drawing_utils
 mp_drawing_styles = mp.solutions.drawing_styles
 hands = mp_hands.Hands(static_image_mode=True, min_detection_confidence=0.9)
 
-with open("rolex.pkl","rb") as f:
+with open("model.pkl","rb") as f:
     model=pickle.load(f)
 
-cap = cv2.VideoCapture(1)
+cap = cv2.VideoCapture(0)
 
 with mp_hands.Hands(min_detection_confidence=0.8, min_tracking_confidence=0.8) as hands:
     while cap.isOpened():
@@ -32,16 +32,6 @@ with mp_hands.Hands(min_detection_confidence=0.8, min_tracking_confidence=0.8) a
         frame_rgb = cv2.cvtColor(frame_rgb, cv2.COLOR_RGB2BGR)
 
         if results.multi_hand_landmarks:
-            for hand_landmarks in results.multi_hand_landmarks:
-                mp_drawing.draw_landmarks(
-                    frame_rgb, # img to draw
-                    hand_landmarks,
-                    mp_hands.HAND_CONNECTIONS,
-                    mp_drawing.DrawingSpec(color=(28, 255, 3), thickness=5, circle_radius=10),
-                    mp_drawing.DrawingSpec(color=(236, 255, 3), thickness=5, circle_radius=10)
-                )
-
-
             for hand_landmarks in results.multi_hand_landmarks:
                 for i in range(len(hand_landmarks.landmark)):
                     x = hand_landmarks.landmark[i].x

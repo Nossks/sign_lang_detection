@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>ASL Real-Time</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+  <div class="container">
+    <h1>ASL Alphabet → Word & Sentence</h1>
+
+    <div class="top-row">
+      <div class="video-container">
+        <video id="video" autoplay playsinline></video>
+        <canvas id="canvas" width="640" height="480" style="display:none;"></canvas>
+      </div>
+      <div class="legend-container">
+        <h2>ASL Alphabet Symbols</h2>
+        <img
+          id="legendImg"
+          src="{{ url_for('static', filename='images/collage_labeled.jpg') }}"
+          alt="ASL Alphabet Symbols"
+          class="legend-img"
+        >
+      </div>
+    </div>
+    
+    <div class="info">
+      <p>Predicted Letter: <span id="predicted">–</span></p>
+      <p>Current Word: <span id="currentWord"></span></p>
+      <p>Sentence: <span id="sentence"></span></p>
+    </div>
+    
+    <div class="controls">
+      <button id="backspace">Backspace</button>
+      <button id="clearAll">Clear All</button>
+      <button id="speak">Speak</button>
+    </div>
+  </div>
+  
+  <script src="{{ url_for('static', filename='script.js') }}"></script>
+</body>
+</html>

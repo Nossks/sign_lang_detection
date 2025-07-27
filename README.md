@@ -1,1 +1,0 @@
-# sign_lang_detection

@@ -1,61 +1,58 @@
-import streamlit as st
-import mediapipe as mp
-import cv2 as cv
-import pickle
+import io
+import base64
+import cv2
 import numpy as np
+import pickle
+import mediapipe as mp
+from flask import Flask, render_template, request, jsonify
 
-# Load model
-with open("rolex.pkl", "rb") as f:
+app = Flask(__name__)
+mp_hands = mp.solutions.hands
+hands = mp_hands.Hands(
+    static_image_mode=False,
+    min_detection_confidence=0.8,
+    min_tracking_confidence=0.8,
+)
+
+with open("model.pkl", "rb") as f:
     model = pickle.load(f)
 
-# Initialize MediaPipe Hands
-mp_hands = mp.solutions.hands
-mp_drawing = mp.solutions.drawing_utils
-mp_drawing_styles = mp.solutions.drawing_styles
-hands = mp_hands.Hands(min_detection_confidence=0.8, min_tracking_confidence=0.8)
+@app.route("/")
+def index():
+    return render_template("index.html")
 
-# Streamlit UI
-st.title("Live Sign Language Detection")
-st.write("Turn on your webcam and make signs to detect them.")
 
-# OpenCV Webcam Feed
-webcam = cv.VideoCapture(0)  # Change to 1 if using an external webcam
-frame_window = st.image([])  # Placeholder for video frame
-
-while webcam.isOpened():
-    ret, frame = webcam.read()
-    if not ret:
-        st.warning("Failed to grab frame. Check webcam connection.")
-        break
-
-    data_aux, x_, y_ = [], [], []
-    h, w, _ = frame.shape
-
-    img_rgb = cv.cvtColor(frame, cv.COLOR_BGR2RGB)
-    results = hands.process(img_rgb)
-
+@app.route("/predict", methods=["POST"])
+def predict():
+    data = request.json.get("image", "")
+    if not data.startswith("data:image"):
+        return jsonify({"letter": ""})
+    header, b64 = data.split(",", 1)
+    img_bytes = base64.b64decode(b64)
+    img_arr = np.frombuffer(img_bytes, dtype=np.uint8)
+    frame = cv2.imdecode(img_arr, flags=cv2.IMREAD_COLOR)
+    frame = cv2.flip(frame, 1)
+    rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+    results = hands.process(rgb)
+    letter = ""
     if results.multi_hand_landmarks:
+        data_aux = []
+        H, W, _ = frame.shape
         for hand_landmarks in results.multi_hand_landmarks:
-            mp_drawing.draw_landmarks(
-                frame, hand_landmarks, mp_hands.HAND_CONNECTIONS,
-                mp_drawing_styles.get_default_hand_landmarks_style(),
-                mp_drawing_styles.get_default_hand_connections_style()
-            )
+            xs, ys = [], []
+            for lm in hand_landmarks.landmark:
+                xs.append(lm.x)
+                ys.append(lm.y)
+                data_aux.extend([lm.x, lm.y])
 
-            for i in range(len(hand_landmarks.landmark)):
-                x, y = hand_landmarks.landmark[i].x, hand_landmarks.landmark[i].y
-                data_aux.extend([x, y])
-                x_.append(x)
-                y_.append(y)
+        X = np.array(data_aux[:42]).reshape(1, -1)  
+        pred = model.predict(X)[0]
 
-        x1, y1 = int(min(x_) * w) - 10, int(min(y_) * h) - 10
-        x2, y2 = int(max(x_) * w) + 10, int(max(y_) * h) + 10
+        labels = list("ABCDEFGHIJKLMNOPQRSTUVWXYZ ")
+        letter = pred if isinstance(pred, str) else labels[pred]
 
-        prediction = model.predict([np.array(data_aux)[:42]])[0]
-        cv.rectangle(frame, (x1, y1), (x2, y2), (0, 0, 0), 3)
-        cv.putText(frame, prediction, (x1, y1 - 10), cv.FONT_HERSHEY_COMPLEX, 3, (0, 0, 0), 5)
+    return jsonify({"letter": letter})
 
-    frame_window.image(frame, channels="BGR")
 
-webcam.release()
-cv.destroyAllWindows()
+if __name__ == "__main__":
+    app.run(debug=True)
